@@ -174,6 +174,7 @@ def generate_reel(job_id: str, prompt: str, duration: int):
 
                 if not output_path.exists() or output_path.stat().st_size == 0:
                     raise RuntimeError("Video file was not created")
+                download_token = secrets.token_urlsafe(24)
 
                 jobs[job_id] = {
                     "id": job_id,
@@ -184,6 +185,8 @@ def generate_reel(job_id: str, prompt: str, duration: int):
                     "credits_consumed": data.get("creditsConsumed"),
                     "generation_time_ms": data.get("costTime"),
                     "download_url": f"/reel/{job_id}/file",
+                    "download_token": download_token,
+                    "public_download_url": f"/public/reel/{job_id}/{download_token}",
                 }
                 return
 
@@ -289,7 +292,46 @@ def reel_status(
 
     return job
 
+@app.get("/public/reel/{job_id}/{download_token}")
+def public_reel_file(job_id: str, download_token: str):
+    job = jobs.get(job_id)
 
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Reel job not found"
+        )
+
+    if job.get("status") != "completed":
+        raise HTTPException(
+            status_code=409,
+            detail="Reel is not ready"
+        )
+
+    expected_token = job.get("download_token", "")
+
+    if not expected_token or not secrets.compare_digest(
+        download_token,
+        expected_token
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid download token"
+        )
+
+    output_path = OUTPUT_DIR / f"{job_id}.mp4"
+
+    if not output_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Video file not found"
+        )
+
+    return FileResponse(
+        path=output_path,
+        media_type="video/mp4",
+        filename=f"reel-{job_id}.mp4"
+    )
 @app.get("/reel/{job_id}/file")
 def reel_file(
     job_id: str,
