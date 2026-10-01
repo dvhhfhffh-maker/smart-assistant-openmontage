@@ -20,7 +20,7 @@ OUTPUT_DIR = Path("/tmp/smart-assistant-reels")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 KIE_BASE_URL = "https://api.kie.ai"
-KIE_MODEL = "bytedance/seedance-2-mini"
+KIE_MODEL = "bytedance/v1-lite-text-to-video"
 KIE_POLL_INTERVAL_SECONDS = 5
 KIE_TIMEOUT_SECONDS = 900
 
@@ -69,15 +69,17 @@ def create_kie_task(prompt: str, duration: int) -> str:
         headers=kie_headers(),
         json={
             "model": KIE_MODEL,
-            "input": {
-                "prompt": prompt,
-                "return_last_frame": False,
-                "generate_audio": False,
-                "resolution": "720p",
-                "aspect_ratio": "9:16",
-                "duration": duration,
-                "web_search": False,
-            },
+        
+              "input": {
+    "prompt": prompt,
+    "aspect_ratio": "9:16",
+    "resolution": "720p",
+    "duration": str(duration),
+    "camera_fixed": False,
+    "seed": -1,
+    "enable_safety_checker": True,
+    "nsfw_checker": False,
+},
         },
         timeout=60,
     )
